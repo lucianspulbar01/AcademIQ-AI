@@ -61,8 +61,6 @@ else:
         st.rerun()
 
     cuvant_magic = st.sidebar.selectbox("Alege materia:", ("General", "Economie", "Drept", "Informatică", "Medicină"))
-# ---> ADAUGĂ LINIA ASTA AICI <---
-    st.sidebar.info(f"📁 Status Memorie: {len(st.session_state.mesaje)} mesaje salvate în istoric.")
   # ==========================================
     # ZONA NOUĂ: MULTIPLE FIȘIERE + MULTIPLE FORMATE
     # ==========================================
@@ -165,6 +163,7 @@ else:
         # Salvăm și răspunsul AI-ului în memoria scurtă și lungă!
         st.session_state.mesaje.append({"rol": "assistant", "continut": raspuns_ai})
         salveaza_istoric(st.session_state.utilizator_curent, st.session_state.mesaje)
+
 
 
 
