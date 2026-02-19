@@ -39,8 +39,8 @@ else:
     client = OpenAI(api_key=st.secrets["openai_api_key"])
 
     # Salutăm utilizatorul pe nume!
-    st.title(f"🎓 Asistent AI")
-    st.write(f"Salut, **{st.session_state.utilizator_curent}**! Cu ce te pot ajuta azi?")
+    st.title(f"🎓 AcademIQ AI")
+    st.write(f"Salut, **{st.session_state.utilizator_curent}**! cu ce te pot ajuta azi?")
 
     # Buton de deconectare în meniul lateral
     if st.sidebar.button("🚪 Deconectare"):
@@ -50,7 +50,7 @@ else:
 
     cuvant_magic = st.sidebar.selectbox(
         "Alege materia:",
-        ("General", "Drept", "Medicină", "Informatică", "Economie")
+        ("General", "Economie", "Drept", "Informatică", "Medicină")
     )
 
     context = "Ești un profesor universitar calm și răbdător."
@@ -85,3 +85,4 @@ else:
             raspuns_ai = st.write_stream(stream)
         
         st.session_state.mesaje.append({"rol": "assistant", "continut": raspuns_ai})
+
