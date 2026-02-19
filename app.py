@@ -130,25 +130,37 @@ else:
         with st.chat_message(mesaj["rol"]):
             st.markdown(mesaj["continut"])
 
+    # Când utilizatorul scrie o întrebare nouă
     if intrebare := st.chat_input("Scrie o întrebare din cursuri..."):
+        
+        # 1. O afișăm pe ecran
         with st.chat_message("user"):
             st.markdown(intrebare)
         
+        # 2. O adăugăm în memoria scurtă
         st.session_state.mesaje.append({"rol": "user", "continut": intrebare})
+        
+        # 3. O SALVĂM ÎN DOSAR (Memoria lungă)
+        salveaza_istoric(st.session_state.utilizator_curent, st.session_state.mesaje)
 
+        # Pregătim mesajul pentru API
         mesaje_api = [{"role": "system", "content": context}]
         for m in st.session_state.mesaje:
             mesaje_api.append({"role": m["rol"], "content": m["continut"]})
 
+        # Primim răspunsul
         with st.chat_message("assistant"):
             stream = client.chat.completions.create(
-                model="gpt-5.2", # Am lăsat noul motor aici!
+                model="gpt-5.2", # Sau gpt-4o / gpt-3.5-turbo în funcție de ce ai lăsat
                 messages=mesaje_api,
                 stream=True
             )
             raspuns_ai = st.write_stream(stream)
         
+        # Salvăm și răspunsul AI-ului în memoria scurtă și lungă!
         st.session_state.mesaje.append({"rol": "assistant", "continut": raspuns_ai})
+        salveaza_istoric(st.session_state.utilizator_curent, st.session_state.mesaje)
+
 
 
 
