@@ -4,8 +4,27 @@ import PyPDF2 # Unealta nouă pentru PDF-uri
 import docx # Pentru Word
 import pandas as pd # Pentru Excel
 from pptx import Presentation # Pentru PowerPoint
+import json # Unealta nouă pentru salvarea chaturilor
+import os   # Unealta nouă pentru a verifica dacă dosarul există
 
 st.set_page_config(page_title="AcademIQ AI", page_icon="🎓")
+
+# ==========================================
+# FUNCȚII NOI: SALVAREA ȘI ÎNCĂRCAREA ISTORICULUI
+# ==========================================
+def incarca_istoric(utilizator):
+    """Caută dosarul utilizatorului și citește mesajele trecute."""
+    nume_fisier = f"istoric_{utilizator}.json"
+    if os.path.exists(nume_fisier):
+        with open(nume_fisier, "r", encoding="utf-8") as f:
+            return json.load(f)
+    return [] # Dacă nu are istoric, returnăm o listă goală
+
+def salveaza_istoric(utilizator, mesaje):
+    """Scrie mesajele noi în dosarul utilizatorului."""
+    nume_fisier = f"istoric_{utilizator}.json"
+    with open(nume_fisier, "w", encoding="utf-8") as f:
+        json.dump(mesaje, f, ensure_ascii=False, indent=4)
 
 # --- SISTEMUL DE LOGIN ---
 if "logat" not in st.session_state:
@@ -130,6 +149,7 @@ else:
             raspuns_ai = st.write_stream(stream)
         
         st.session_state.mesaje.append({"rol": "assistant", "continut": raspuns_ai})
+
 
 
 
