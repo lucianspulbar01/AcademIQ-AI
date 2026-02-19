@@ -23,8 +23,12 @@ def incarca_istoric(utilizator):
 def salveaza_istoric(utilizator, mesaje):
     """Scrie mesajele noi în dosarul utilizatorului."""
     nume_fisier = f"istoric_{utilizator}.json"
-    with open(nume_fisier, "w", encoding="utf-8") as f:
-        json.dump(mesaje, f, ensure_ascii=False, indent=4)
+    try:
+        with open(nume_fisier, "w", encoding="utf-8") as f:
+            json.dump(mesaje, f, ensure_ascii=False, indent=4)
+    except Exception as e:
+        # Dacă serverul blochează salvarea, ne va da un mesaj roșu de eroare
+        st.error(f"Eroare la salvarea memoriei: {e}")
 
 # --- SISTEMUL DE LOGIN ---
 if "logat" not in st.session_state:
@@ -160,6 +164,7 @@ else:
         # Salvăm și răspunsul AI-ului în memoria scurtă și lungă!
         st.session_state.mesaje.append({"rol": "assistant", "continut": raspuns_ai})
         salveaza_istoric(st.session_state.utilizator_curent, st.session_state.mesaje)
+
 
 
 
