@@ -1,6 +1,9 @@
 import streamlit as st
 from openai import OpenAI
 import PyPDF2 # Unealta nouă pentru PDF-uri
+import docx # Pentru Word
+import pandas as pd # Pentru Excel
+from pptx import Presentation # Pentru PowerPoint
 
 st.set_page_config(page_title="AcademIQ AI", page_icon="🎓")
 
@@ -36,31 +39,70 @@ else:
 
     cuvant_magic = st.sidebar.selectbox("Alege materia:", ("General", "Economie", "Drept", "Informatică", "Medicină"))
 
-    # ==========================================
-    # ZONA NOUĂ: Încărcarea și citirea PDF-ului
+  # ==========================================
+    # ZONA NOUĂ: MULTIPLE FIȘIERE + MULTIPLE FORMATE
     # ==========================================
     st.sidebar.markdown("---")
     st.sidebar.subheader("📚 Baza de cunoștințe")
-    fisier_pdf = st.sidebar.file_uploader("Încarcă un curs (PDF)", type="pdf")
+    
+    # 1. Am adăugat accept_multiple_files=True și am listat toate formatele!
+    fisiere_incarcate = st.sidebar.file_uploader(
+        "Încarcă cursuri, seminarii etc.", 
+        type=["pdf", "docx", "xlsx", "pptx", "txt"], 
+        accept_multiple_files=True
+    )
     
     text_curs = ""
-    if fisier_pdf is not None:
-        # Dacă studentul a pus un fișier, extragem textul din el
-        pdf_reader = PyPDF2.PdfReader(fisier_pdf)
-        for pagina in pdf_reader.pages:
-            text_curs += pagina.extract_text() + "\n"
-        st.sidebar.success("Curs încărcat și citit cu succes!")
+    if fisiere_incarcate:
+        with st.spinner('Citesc documentele...'):
+            # 2. Luăm fiecare fișier la rând
+            for fisier in fisiere_incarcate:
+                nume_fisier = fisier.name
+                extensie = nume_fisier.split('.')[-1].lower()
+                
+                # Punem un titlu invizibil pentru AI ca să știe din ce document citește
+                text_curs += f"\n\n--- DOCUMENT: {nume_fisier} ---\n"
+                
+                try:
+                    # 3. Deschidem cu cheia potrivită în funcție de format
+                    if extensie == "pdf":
+                        pdf_reader = PyPDF2.PdfReader(fisier)
+                        for pagina in pdf_reader.pages:
+                            text_curs += pagina.extract_text() + "\n"
+                            
+                    elif extensie == "docx":
+                        doc = docx.Document(fisier)
+                        for paragraf in doc.paragraphs:
+                            text_curs += paragraf.text + "\n"
+                            
+                    elif extensie == "xlsx":
+                        df = pd.read_excel(fisier)
+                        text_curs += df.to_string() + "\n"
+                        
+                    elif extensie == "pptx":
+                        prezentare = Presentation(fisier)
+                        for slide in prezentare.slides:
+                            for forma in slide.shapes:
+                                if hasattr(forma, "text"):
+                                    text_curs += forma.text + "\n"
+                                    
+                    elif extensie == "txt":
+                        text_curs += fisier.getvalue().decode("utf-8") + "\n"
+                        
+                except Exception as e:
+                    st.sidebar.error(f"Eroare la citirea {nume_fisier}: {e}")
+                    
+        st.sidebar.success(f"{len(fisiere_incarcate)} document(e) citite cu succes!")
 
     # ==========================================
 
-    # Construim contextul (Instrucțiunile secrete)
+    # Construim contextul (Aici e modelul vechi de limită, poți să-l lași fără [:] dacă folosești GPT-5)
     context = "Ești un profesor universitar calm și răbdător."
     if cuvant_magic == "Drept":
         context = "Ești un profesor expert de Drept."
     
-    # Dacă avem text din PDF, îi spunem AI-ului să îl folosească
     if text_curs != "":
-        context += f"\n\nTe rog să răspunzi la întrebările studentului bazându-te STRICT pe următoarele notițe de curs. Dacă răspunsul nu se află în curs, spune-i asta clar. \n\nNOTIȚE CURS:\n{text_curs}" 
+        context += f"\n\nTe rog să răspunzi la întrebările studentului bazându-te STRICT pe următoarele materiale. Dacă răspunsul nu se află în ele, spune clar.\n\nMATERIALE:\n{text_curs}" 
 
     if "mesaje" not in st.session_state:
         st.session_state.mesaje = []
@@ -69,7 +111,7 @@ else:
         with st.chat_message(mesaj["rol"]):
             st.markdown(mesaj["continut"])
 
-    if intrebare := st.chat_input("Scrie o întrebare din curs..."):
+    if intrebare := st.chat_input("Scrie o întrebare din cursuri..."):
         with st.chat_message("user"):
             st.markdown(intrebare)
         
@@ -81,13 +123,14 @@ else:
 
         with st.chat_message("assistant"):
             stream = client.chat.completions.create(
-                model="gpt-5.2",
+                model="gpt-5.2", # Am lăsat noul motor aici!
                 messages=mesaje_api,
                 stream=True
             )
             raspuns_ai = st.write_stream(stream)
         
         st.session_state.mesaje.append({"rol": "assistant", "continut": raspuns_ai})
+
 
 
 
