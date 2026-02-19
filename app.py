@@ -1,63 +1,67 @@
 import streamlit as st
 from openai import OpenAI
+import PyPDF2 # Unealta nouă pentru PDF-uri
 
-# Aceasta trebuie să fie prima comandă mereu
-st.set_page_config(page_title="Tutor AI", page_icon="🎓")
+st.set_page_config(page_title="AcademIQ AI", page_icon="🎓")
 
-# --- SISTEMUL DE MEMORIE PENTRU LOGIN ---
-# Dacă userul abia a intrat pe site, setăm că NU este logat
+# --- SISTEMUL DE LOGIN ---
 if "logat" not in st.session_state:
     st.session_state.logat = False
     st.session_state.utilizator_curent = ""
 
-# ==========================================
-# ECRANUL DE LOGIN (Dacă nu este logat)
-# ==========================================
 if not st.session_state.logat:
     st.title("🔒 Acces Restricționat")
-    st.write("Te rog să te conectezi pentru a folosi Asistentul AI.")
-    
-    # Căsuțele de text
     user_input = st.text_input("Nume utilizator:")
-    pass_input = st.text_input("Parolă:", type="password") # type="password" ascunde caracterele cu steluțe
+    pass_input = st.text_input("Parolă:", type="password")
     
-    # Butonul de conectare
     if st.button("Conectare"):
-        # Verificăm dacă userul există în Seiful Streamlit și dacă parola este corectă
         if user_input in st.secrets["passwords"] and st.secrets["passwords"][user_input] == pass_input:
             st.session_state.logat = True
             st.session_state.utilizator_curent = user_input
-            st.rerun() # Reîncărcăm pagina ca să dispară login-ul și să apară chat-ul
+            st.rerun()
         else:
-            st.error("Nume de utilizator sau parolă incorectă!")
+            st.error("Nume sau parolă incorectă!")
 
-# ==========================================
-# APLICAȚIA PRINCIPALĂ (Dacă ESTE logat)
-# ==========================================
+# --- APLICAȚIA PRINCIPALĂ ---
 else:
-    # Conectarea la "Creier"
     client = OpenAI(api_key=st.secrets["openai_api_key"])
 
-    # Salutăm utilizatorul pe nume!
     st.title(f"🎓 AcademIQ AI")
-    st.write(f"Salut, **{st.session_state.utilizator_curent}**! cu ce te pot ajuta azi?")
+    st.write(f"Hai noroc și pe pula sa te intorc, **{st.session_state.utilizator_curent}**! Încarcă un curs și hai să învățăm.")
 
-    # Buton de deconectare în meniul lateral
     if st.sidebar.button("🚪 Deconectare"):
         st.session_state.logat = False
-        st.session_state.mesaje = [] # Ștergem chat-ul ca să nu-l vadă următorul
+        st.session_state.mesaje = []
         st.rerun()
 
-    cuvant_magic = st.sidebar.selectbox(
-        "Alege materia:",
-        ("General", "Economie", "Drept", "Informatică", "Medicină")
-    )
+    cuvant_magic = st.sidebar.selectbox("Alege materia:", ("General", "Drept", "Medicină", "Informatică", "Economie"))
 
+    # ==========================================
+    # ZONA NOUĂ: Încărcarea și citirea PDF-ului
+    # ==========================================
+    st.sidebar.markdown("---")
+    st.sidebar.subheader("📚 Baza de cunoștințe")
+    fisier_pdf = st.sidebar.file_uploader("Încarcă un curs (PDF)", type="pdf")
+    
+    text_curs = ""
+    if fisier_pdf is not None:
+        # Dacă studentul a pus un fișier, extragem textul din el
+        pdf_reader = PyPDF2.PdfReader(fisier_pdf)
+        for pagina in pdf_reader.pages:
+            text_curs += pagina.extract_text() + "\n"
+        st.sidebar.success("Curs încărcat și citit cu succes!")
+
+    # ==========================================
+
+    # Construim contextul (Instrucțiunile secrete)
     context = "Ești un profesor universitar calm și răbdător."
     if cuvant_magic == "Drept":
-        context = "Ești un profesor expert de Drept. Citează legi relevante și explică clar."
-    elif cuvant_magic == "Medicină":
-        context = "Ești un doctor profesor. Explică anatomia clar și structurat."
+        context = "Ești un profesor expert de Drept."
+    
+    # Dacă avem text din PDF, îi spunem AI-ului să îl folosească
+    if text_curs != "":
+        context += f"\n\nTe rog să răspunzi la întrebările studentului bazându-te STRICT pe următoarele notițe de curs. Dacă răspunsul nu se află în curs, spune-i asta clar. \n\nNOTIȚE CURS:\n{text_curs[:15000]}" 
+        # Am pus o limită la primele ~15.000 de caractere ca să nu blocăm memoria AI-ului.
 
     if "mesaje" not in st.session_state:
         st.session_state.mesaje = []
@@ -66,7 +70,7 @@ else:
         with st.chat_message(mesaj["rol"]):
             st.markdown(mesaj["continut"])
 
-    if intrebare := st.chat_input("Scrie un mesaj aici..."):
+    if intrebare := st.chat_input("Scrie o întrebare din curs..."):
         with st.chat_message("user"):
             st.markdown(intrebare)
         
@@ -85,4 +89,3 @@ else:
             raspuns_ai = st.write_stream(stream)
         
         st.session_state.mesaje.append({"rol": "assistant", "continut": raspuns_ai})
-
