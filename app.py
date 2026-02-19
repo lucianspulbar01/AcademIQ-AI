@@ -34,7 +34,7 @@ else:
         st.session_state.mesaje = []
         st.rerun()
 
-    cuvant_magic = st.sidebar.selectbox("Alege materia:", ("General", "Drept", "Medicină", "Informatică", "Economie"))
+    cuvant_magic = st.sidebar.selectbox("Alege materia:", ("General", "Economie", "Drept", "Informatică", "Medicină"))
 
     # ==========================================
     # ZONA NOUĂ: Încărcarea și citirea PDF-ului
@@ -82,11 +82,12 @@ else:
 
         with st.chat_message("assistant"):
             stream = client.chat.completions.create(
-                model="gpt-3.5-turbo",
+                model="gpt-5.2",
                 messages=mesaje_api,
                 stream=True
             )
             raspuns_ai = st.write_stream(stream)
         
         st.session_state.mesaje.append({"rol": "assistant", "continut": raspuns_ai})
+
 
