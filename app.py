@@ -27,7 +27,7 @@ else:
     client = OpenAI(api_key=st.secrets["openai_api_key"])
 
     st.title(f"🎓 AcademIQ AI")
-    st.write(f"Hai noroc și pe pula sa te intorc, **{st.session_state.utilizator_curent}**! Încarcă un curs și hai să învățăm.")
+    st.write(f"Salut, **{st.session_state.utilizator_curent}**! Încarcă un curs și hai să învățăm.")
 
     if st.sidebar.button("🚪 Deconectare"):
         st.session_state.logat = False
@@ -89,3 +89,4 @@ else:
             raspuns_ai = st.write_stream(stream)
         
         st.session_state.mesaje.append({"rol": "assistant", "continut": raspuns_ai})
+
