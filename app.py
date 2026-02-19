@@ -13,7 +13,7 @@ st.write("Salut! Cu ce te pot ajuta astăzi.")
 # Alegerea materiei o punem într-o bară laterală (Sidebar) ca să arate mai bine
 cuvant_magic = st.sidebar.selectbox(
     "Alege materia pentru azi:",
-    ("General", "Drept", "Medicină", "Informatică", "Economie")
+    ("General", "Economie", "Drept", "Informatică", "Medicină")
 )
 
 # Definim personalitatea în funcție de materie
@@ -65,3 +65,4 @@ if intrebare := st.chat_input("Scrie un mesaj aici..."):
 st.markdown("---")
 
 st.caption("Aplicație demonstrativă creată pentru studenți.")
+
