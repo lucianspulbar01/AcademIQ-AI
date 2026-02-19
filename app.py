@@ -61,7 +61,6 @@ else:
     # Dacă avem text din PDF, îi spunem AI-ului să îl folosească
     if text_curs != "":
         context += f"\n\nTe rog să răspunzi la întrebările studentului bazându-te STRICT pe următoarele notițe de curs. Dacă răspunsul nu se află în curs, spune-i asta clar. \n\nNOTIȚE CURS:\n{text_curs}" 
-        # Am pus o limită la primele ~15.000 de caractere ca să nu blocăm memoria AI-ului.
 
     if "mesaje" not in st.session_state:
         st.session_state.mesaje = []
@@ -89,6 +88,7 @@ else:
             raspuns_ai = st.write_stream(stream)
         
         st.session_state.mesaje.append({"rol": "assistant", "continut": raspuns_ai})
+
 
 
 
