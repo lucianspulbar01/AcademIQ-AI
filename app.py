@@ -64,5 +64,6 @@ if intrebare := st.chat_input("Scrie un mesaj aici..."):
 # 6. Footer
 st.markdown("---")
 
-st.caption("Aplicație demonstrativă creată pentru studenți.")
+st.caption("Aplicație creată pentru studenți.")
+
 
