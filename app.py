@@ -7,7 +7,7 @@ from pptx import Presentation # Pentru PowerPoint
 import json # Unealta nouă pentru salvarea chaturilor
 import os   # Unealta nouă pentru a verifica dacă dosarul există
 
-st.set_page_config(page_title="AcademIQ AI", page_icon="🎓")
+st.set_page_config(page_title="CorporateAdvisor AI", page_icon="🎓")
 
 # ==========================================
 # FUNCȚII NOI: SALVAREA ȘI ÎNCĂRCAREA ISTORICULUI
@@ -60,7 +60,7 @@ else:
         st.session_state.mesaje = []
         st.rerun()
 
-    cuvant_magic = st.sidebar.selectbox("Alege materia:", ("General", "Economie", "Drept", "Informatică", "Medicină"))
+    cuvant_magic = st.sidebar.selectbox("Alege materia:", ("Financiar", "Juridic", "Resurse Umane", "Marketing"))
   # ==========================================
     # ZONA NOUĂ: MULTIPLE FIȘIERE + MULTIPLE FORMATE
     # ==========================================
@@ -119,9 +119,9 @@ else:
     # ==========================================
 
     # Construim contextul (Aici e modelul vechi de limită, poți să-l lași fără [:] dacă folosești GPT-5)
-    context = "Ești un profesor universitar calm și răbdător."
-    if cuvant_magic == "Drept":
-        context = "Ești un profesor expert de Drept."
+    context = "Ești un analist de business de top la o firmă de consultanță globală. Rolul tău este să analizezi documentele primite, să identifici riscurile, să optimizezi costurile și să oferi recomandări strategice clare, bazate strict pe datele din fișiere, argumentând logic fiecare propunere."
+    if cuvant_magic == "Consultanta":
+        context = "Ești un expert in consultanta corporativă."
     
     if text_curs != "":
         context += f"\n\nTe rog să răspunzi la întrebările studentului bazându-te STRICT pe următoarele materiale. Dacă răspunsul nu se află în ele, spune clar.\n\nMATERIALE:\n{text_curs}" 
@@ -163,6 +163,7 @@ else:
         # Salvăm și răspunsul AI-ului în memoria scurtă și lungă!
         st.session_state.mesaje.append({"rol": "assistant", "continut": raspuns_ai})
         salveaza_istoric(st.session_state.utilizator_curent, st.session_state.mesaje)
+
 
 
 
