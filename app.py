@@ -122,9 +122,17 @@ else:
     # ==========================================
     # 4. NOUL CREIER CORPORATE (Prompt-ul de sistem)
     # ==========================================
-    context = """Ești un Senior Business Analyst și Consultant Strategic la o firmă de top (Big 4).
+    # ==========================================
+    # 4. NOUL CREIER CORPORATE (Prompt-ul de sistem)
+    # ==========================================
+    context = f"""Ești un Senior Business Analyst și Consultant Strategic la o firmă de top (Big 4).
+În prezent, ești asignat STRICT pe departamentul: **{departament}**.
+
+REGULĂ CRITICĂ: Dacă utilizatorul îți pune o întrebare care nu are legătură cu {departament}, ci ține clar de competența altui departament (ex. te întreabă de campanii publicitare când tu ești pe Juridic, sau de clauze legale când ești pe Marketing), NU îi oferi analiza. 
+Răspunde-i scurt și politicos cu un mesaj de genul: "Observ că solicitarea dvs. face referire la [domeniul identificat], care depășește aria de expertiză a departamentului {departament}. Pentru a vă oferi cea mai bună analiză, vă rog să schimbați filtrul departamental din meniul lateral pe [Departamentul Corect]."
+
 Rolul tău este să analizezi documentele primite, să identifici riscurile, să optimizezi costurile și să oferi recomandări acționabile.
-Folosește un ton profesional, clar și concis. Utilizează terminologie de business adecvată (ex: ROI, KPIs, risk mitigation, due diligence, sinergii, bottom-line) atunci când contextul o cere.
+Folosește un ton profesional, clar și concis. Utilizează terminologie de business adecvată atunci când contextul o cere.
 Structurează-ți mereu răspunsurile logic: folosește paragrafe scurte, bullet points pentru enumerări și pune în bold (îngroșat) metricile sau deciziile importante."""
 
     if departament == "Financiar":
@@ -133,9 +141,13 @@ Structurează-ți mereu răspunsurile logic: folosește paragrafe scurte, bullet
         context += "\nAnalizezi totul din perspectivă legală. Evaluează clauzele contractuale, liability-ul (răspunderea), conformitatea (compliance) și riscurile de litigiu."
     elif departament == "Marketing":
         context += "\nAnalizezi din perspectiva brandului și a cotei de piață. Pune accent pe target audience, CAC (Cost of Customer Acquisition) și ratele de conversie."
+    elif departament == "Resurse Umane":
+        context += "\nAnalizezi din perspectiva capitalului uman. Pune accent pe retenție, recrutare, evaluarea performanței și cultura organizațională."
+    elif departament == "Management & Strategie":
+        context += "\nAnalizezi din perspectiva conducerii (C-level). Pune accent pe scalabilitate, OKRs, direcția generală a companiei și sinergii între departamente."
 
     if text_curs != "":
-        context += f"\n\nTe rog să răspunzi la solicitările utilizatorului bazându-te STRICT pe următoarele documente (Data Room). Dacă o informație nu se regăsește în documente, specifică clar: 'Nu există date suficiente în documentele furnizate'.\n\nDATE/DOCUMENTE DISPONIBILE:\n{text_curs}" 
+        context += f"\n\nTe rog să răspunzi la solicitările utilizatorului bazându-te STRICT pe următoarele documente (Data Room). Dacă o informație nu se regăsește în documente, specifică clar.\n\nDATE/DOCUMENTE DISPONIBILE:\n{text_curs}" 
 
     if "mesaje" not in st.session_state:
         st.session_state.mesaje = []
@@ -167,3 +179,4 @@ Structurează-ți mereu răspunsurile logic: folosește paragrafe scurte, bullet
         
         st.session_state.mesaje.append({"rol": "assistant", "continut": raspuns_ai})
         salveaza_istoric(st.session_state.utilizator_curent, st.session_state.mesaje)
+
