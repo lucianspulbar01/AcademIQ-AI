@@ -1,34 +1,32 @@
 import streamlit as st
 from openai import OpenAI
-import PyPDF2 # Unealta nouă pentru PDF-uri
-import docx # Pentru Word
-import pandas as pd # Pentru Excel
-from pptx import Presentation # Pentru PowerPoint
-import json # Unealta nouă pentru salvarea chaturilor
-import os   # Unealta nouă pentru a verifica dacă dosarul există
+import PyPDF2
+import docx
+import pandas as pd
+from pptx import Presentation
+import json
+import os
 
-st.set_page_config(page_title="CorporateAdvisor AI", page_icon="🎓")
+# 1. Am schimbat iconița și titlul paginii
+st.set_page_config(page_title="CorporateAdvisor AI", page_icon="💼", layout="wide")
 
 # ==========================================
 # FUNCȚII NOI: SALVAREA ȘI ÎNCĂRCAREA ISTORICULUI
 # ==========================================
 def incarca_istoric(utilizator):
-    """Caută dosarul utilizatorului și citește mesajele trecute."""
     nume_fisier = f"istoric_{utilizator}.json"
     if os.path.exists(nume_fisier):
         with open(nume_fisier, "r", encoding="utf-8") as f:
             return json.load(f)
-    return [] # Dacă nu are istoric, returnăm o listă goală
+    return []
 
 def salveaza_istoric(utilizator, mesaje):
-    """Scrie mesajele noi în dosarul utilizatorului."""
     nume_fisier = f"istoric_{utilizator}.json"
     try:
         with open(nume_fisier, "w", encoding="utf-8") as f:
             json.dump(mesaje, f, ensure_ascii=False, indent=4)
     except Exception as e:
-        # Dacă serverul blochează salvarea, ne va da un mesaj roșu de eroare
-        st.error(f"Eroare la salvarea memoriei: {e}")
+        st.error(f"Eroare internă de salvare: {e}")
 
 # --- SISTEMUL DE LOGIN ---
 if "logat" not in st.session_state:
@@ -36,57 +34,62 @@ if "logat" not in st.session_state:
     st.session_state.utilizator_curent = ""
 
 if not st.session_state.logat:
-    st.title("🔒 Acces Restricționat")
-    user_input = st.text_input("Nume utilizator:")
+    # Un ecran de login mult mai "business"
+    st.title("🔐 Portal Securizat: CorporateAdvisor AI")
+    st.write("Vă rugăm să vă autentificați pentru a accesa platforma de analiză a documentelor.")
+    
+    user_input = st.text_input("Nume utilizator (ID angajat):")
     pass_input = st.text_input("Parolă:", type="password")
     
-    if st.button("Conectare"):
+    if st.button("Autentificare"):
         if user_input in st.secrets["passwords"] and st.secrets["passwords"][user_input] == pass_input:
             st.session_state.logat = True
             st.session_state.utilizator_curent = user_input
             st.rerun()
         else:
-            st.error("Nume sau parolă incorectă!")
+            st.error("Credențiale incorecte. Acces refuzat!")
 
 # --- APLICAȚIA PRINCIPALĂ ---
 else:
     client = OpenAI(api_key=st.secrets["openai_api_key"])
 
-    st.title(f"🎓 AcademIQ AI")
-    st.write(f"Salut, **{st.session_state.utilizator_curent}**! Încarcă un curs și hai să învățăm.")
+    # 2. LOCUL PENTRU LOGO
+    # Dacă ai o poză numită "logo.png" pusă pe GitHub lângă cod, șterge diez-ul (#) de la linia de mai jos:
+    # st.sidebar.image("logo.png", width=200)
+
+    st.title(f"💼 CorporateAdvisor AI")
+    st.markdown(f"**Utilizator curent:** {st.session_state.utilizator_curent} | Încărcați documentele pentru analiză și sinteză strategică.")
 
     if st.sidebar.button("🚪 Deconectare"):
         st.session_state.logat = False
         st.session_state.mesaje = []
         st.rerun()
 
-    cuvant_magic = st.sidebar.selectbox("Alege materia:", ("Financiar", "Juridic", "Resurse Umane", "Marketing"))
-  # ==========================================
+    # 3. Departamente Corporate în loc de Materii
+    departament = st.sidebar.selectbox("Filtru Departamental:", ("Management & Strategie", "Financiar", "Juridic", "Resurse Umane", "Marketing"))
+    
+    # ==========================================
     # ZONA NOUĂ: MULTIPLE FIȘIERE + MULTIPLE FORMATE
     # ==========================================
     st.sidebar.markdown("---")
-    st.sidebar.subheader("📚 Baza de cunoștințe")
+    st.sidebar.subheader("📂 Documente Sursă (Data Room)")
     
-    # 1. Am adăugat accept_multiple_files=True și am listat toate formatele!
     fisiere_incarcate = st.sidebar.file_uploader(
-        "Încarcă cursuri, seminarii etc.", 
+        "Încărcați contracte, bugete, prezentări (PDF, Word, Excel etc.)", 
         type=["pdf", "docx", "xlsx", "pptx", "txt"], 
         accept_multiple_files=True
     )
     
     text_curs = ""
     if fisiere_incarcate:
-        with st.spinner('Citesc documentele...'):
-            # 2. Luăm fiecare fișier la rând
+        with st.spinner('Procesez documentele...'):
             for fisier in fisiere_incarcate:
                 nume_fisier = fisier.name
                 extensie = nume_fisier.split('.')[-1].lower()
                 
-                # Punem un titlu invizibil pentru AI ca să știe din ce document citește
                 text_curs += f"\n\n--- DOCUMENT: {nume_fisier} ---\n"
                 
                 try:
-                    # 3. Deschidem cu cheia potrivită în funcție de format
                     if extensie == "pdf":
                         pdf_reader = PyPDF2.PdfReader(fisier)
                         for pagina in pdf_reader.pages:
@@ -114,17 +117,25 @@ else:
                 except Exception as e:
                     st.sidebar.error(f"Eroare la citirea {nume_fisier}: {e}")
                     
-        st.sidebar.success(f"{len(fisiere_incarcate)} document(e) citite cu succes!")
+        st.sidebar.success(f"{len(fisiere_incarcate)} document(e) procesate. Pregătit pentru analiză.")
 
     # ==========================================
+    # 4. NOUL CREIER CORPORATE (Prompt-ul de sistem)
+    # ==========================================
+    context = """Ești un Senior Business Analyst și Consultant Strategic la o firmă de top (Big 4).
+Rolul tău este să analizezi documentele primite, să identifici riscurile, să optimizezi costurile și să oferi recomandări acționabile.
+Folosește un ton profesional, clar și concis. Utilizează terminologie de business adecvată (ex: ROI, KPIs, risk mitigation, due diligence, sinergii, bottom-line) atunci când contextul o cere.
+Structurează-ți mereu răspunsurile logic: folosește paragrafe scurte, bullet points pentru enumerări și pune în bold (îngroșat) metricile sau deciziile importante."""
 
-    # Construim contextul (Aici e modelul vechi de limită, poți să-l lași fără [:] dacă folosești GPT-5)
-    context = "Ești un analist de business de top la o firmă de consultanță globală. Rolul tău este să analizezi documentele primite, să identifici riscurile, să optimizezi costurile și să oferi recomandări strategice clare, bazate strict pe datele din fișiere, argumentând logic fiecare propunere."
-    if cuvant_magic == "Consultanta":
-        context = "Ești un expert in consultanta corporativă."
-    
+    if departament == "Financiar":
+        context += "\nAnalizezi totul din perspectivă financiară. Pune accent pe cash-flow, profitabilitate, reducere de costuri (cost-cutting) și marginile de profit."
+    elif departament == "Juridic":
+        context += "\nAnalizezi totul din perspectivă legală. Evaluează clauzele contractuale, liability-ul (răspunderea), conformitatea (compliance) și riscurile de litigiu."
+    elif departament == "Marketing":
+        context += "\nAnalizezi din perspectiva brandului și a cotei de piață. Pune accent pe target audience, CAC (Cost of Customer Acquisition) și ratele de conversie."
+
     if text_curs != "":
-        context += f"\n\nTe rog să răspunzi la întrebările studentului bazându-te STRICT pe următoarele materiale. Dacă răspunsul nu se află în ele, spune clar.\n\nMATERIALE:\n{text_curs}" 
+        context += f"\n\nTe rog să răspunzi la solicitările utilizatorului bazându-te STRICT pe următoarele documente (Data Room). Dacă o informație nu se regăsește în documente, specifică clar: 'Nu există date suficiente în documentele furnizate'.\n\nDATE/DOCUMENTE DISPONIBILE:\n{text_curs}" 
 
     if "mesaje" not in st.session_state:
         st.session_state.mesaje = []
@@ -133,44 +144,26 @@ else:
         with st.chat_message(mesaj["rol"]):
             st.markdown(mesaj["continut"])
 
-    # Când utilizatorul scrie o întrebare nouă
-    if intrebare := st.chat_input("Scrie o întrebare din cursuri..."):
+    # Input schimbat
+    if intrebare := st.chat_input("Adresați o solicitare de analiză către AI..."):
         
-        # 1. O afișăm pe ecran
         with st.chat_message("user"):
             st.markdown(intrebare)
         
-        # 2. O adăugăm în memoria scurtă
         st.session_state.mesaje.append({"rol": "user", "continut": intrebare})
-        
-        # 3. O SALVĂM ÎN DOSAR (Memoria lungă)
         salveaza_istoric(st.session_state.utilizator_curent, st.session_state.mesaje)
 
-        # Pregătim mesajul pentru API
         mesaje_api = [{"role": "system", "content": context}]
         for m in st.session_state.mesaje:
             mesaje_api.append({"role": m["rol"], "content": m["continut"]})
 
-        # Primim răspunsul
         with st.chat_message("assistant"):
             stream = client.chat.completions.create(
-                model="gpt-5.2", # Sau gpt-4o / gpt-3.5-turbo în funcție de ce ai lăsat
+                model="gpt-5.2", 
                 messages=mesaje_api,
                 stream=True
             )
             raspuns_ai = st.write_stream(stream)
         
-        # Salvăm și răspunsul AI-ului în memoria scurtă și lungă!
         st.session_state.mesaje.append({"rol": "assistant", "continut": raspuns_ai})
         salveaza_istoric(st.session_state.utilizator_curent, st.session_state.mesaje)
-
-
-
-
-
-
-
-
-
-
-
