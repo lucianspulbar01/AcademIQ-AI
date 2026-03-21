@@ -171,7 +171,7 @@ Structurează-ți mereu răspunsurile logic: folosește paragrafe scurte, bullet
 
         with st.chat_message("assistant"):
             stream = client.chat.completions.create(
-                model="gpt-5.2", 
+                model="gpt-5.4", 
                 messages=mesaje_api,
                 stream=True
             )
