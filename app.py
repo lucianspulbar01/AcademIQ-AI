@@ -65,90 +65,54 @@ else:
         st.session_state.mesaje = []
         st.rerun()
 
-    # 3. Departamente Corporate în loc de Materii
-    departament = st.sidebar.selectbox("Filtru Departamental:", ("Management & Strategie", "Financiar", "Juridic", "Resurse Umane", "Marketing"))
-    
-    # ==========================================
-    # ZONA NOUĂ: MULTIPLE FIȘIERE + MULTIPLE FORMATE
-    # ==========================================
-    st.sidebar.markdown("---")
-    st.sidebar.subheader("📂 Documente Sursă (Data Room)")
-    
-    fisiere_incarcate = st.sidebar.file_uploader(
-        "Încărcați contracte, bugete, prezentări (PDF, Word, Excel etc.)", 
-        type=["pdf", "docx", "xlsx", "pptx", "txt"], 
-        accept_multiple_files=True
+    # 3. Meniul de Departamente extins
+    departament = st.sidebar.selectbox(
+        "Filtru Departamental:", 
+        (
+            "Management & Strategie", 
+            "Financiar", 
+            "Juridic", 
+            "Resurse Umane", 
+            "Marketing",
+            "Vânzări", 
+            "Operațiuni & Logistică", 
+            "IT & Securitate"
+        )
     )
     
-    text_curs = ""
-    if fisiere_incarcate:
-        with st.spinner('Procesez documentele...'):
-            for fisier in fisiere_incarcate:
-                nume_fisier = fisier.name
-                extensie = nume_fisier.split('.')[-1].lower()
-                
-                text_curs += f"\n\n--- DOCUMENT: {nume_fisier} ---\n"
-                
-                try:
-                    if extensie == "pdf":
-                        pdf_reader = PyPDF2.PdfReader(fisier)
-                        for pagina in pdf_reader.pages:
-                            text_curs += pagina.extract_text() + "\n"
-                            
-                    elif extensie == "docx":
-                        doc = docx.Document(fisier)
-                        for paragraf in doc.paragraphs:
-                            text_curs += paragraf.text + "\n"
-                            
-                    elif extensie == "xlsx":
-                        df = pd.read_excel(fisier)
-                        text_curs += df.to_string() + "\n"
-                        
-                    elif extensie == "pptx":
-                        prezentare = Presentation(fisier)
-                        for slide in prezentare.slides:
-                            for forma in slide.shapes:
-                                if hasattr(forma, "text"):
-                                    text_curs += forma.text + "\n"
-                                    
-                    elif extensie == "txt":
-                        text_curs += fisier.getvalue().decode("utf-8") + "\n"
-                        
-                except Exception as e:
-                    st.sidebar.error(f"Eroare la citirea {nume_fisier}: {e}")
-                    
-        st.sidebar.success(f"{len(fisiere_incarcate)} document(e) procesate. Pregătit pentru analiză.")
 
     # ==========================================
     # 4. NOUL CREIER CORPORATE (Prompt-ul de sistem)
     # ==========================================
-    # ==========================================
-    # 4. NOUL CREIER CORPORATE (Prompt-ul de sistem)
-    # ==========================================
-    context = f"""Ești un Senior Business Analyst și Consultant Strategic la o firmă de top (Big 4).
+    context = f"""Ești un Senior Business Analyst și Consultant Strategic la o firmă de top.
 În prezent, ești asignat STRICT pe departamentul: **{departament}**.
 
-REGULĂ CRITICĂ: Dacă utilizatorul îți pune o întrebare care nu are legătură cu {departament}, ci ține clar de competența altui departament (ex. te întreabă de campanii publicitare când tu ești pe Juridic, sau de clauze legale când ești pe Marketing), NU îi oferi analiza. 
-Răspunde-i scurt și politicos cu un mesaj de genul: "Observ că solicitarea dvs. face referire la [domeniul identificat], care depășește aria de expertiză a departamentului {departament}. Pentru a vă oferi cea mai bună analiză, vă rog să schimbați filtrul departamental din meniul lateral pe [Departamentul Corect]."
+REGULĂ CRITICĂ: Dacă utilizatorul îți pune o întrebare care nu are legătură cu {departament}, nu îi oferi analiza. Spune-i politicos să schimbe filtrul departamental din meniul lateral.
 
-Rolul tău este să analizezi documentele primite, să identifici riscurile, să optimizezi costurile și să oferi recomandări acționabile.
-Folosește un ton profesional, clar și concis. Utilizează terminologie de business adecvată atunci când contextul o cere.
-Structurează-ți mereu răspunsurile logic: folosește paragrafe scurte, bullet points pentru enumerări și pune în bold (îngroșat) metricile sau deciziile importante."""
+REGULĂ DE FORMATARE: Răspunde SCURT, concis și direct la obiect. Folosește EXCLUSIV text cursiv (paragrafe legate). ESTE STRICT INTERZISĂ folosirea listelor cu liniuțe (bullet points) sau a enumerărilor. Formulează răspunsul ca un rezumat executiv (Executive Summary) de maxim 1-2 paragrafe.
 
+Rolul tău este să analizezi documentele primite și să oferi recomandări de business clare, folosind un ton profesional."""
+
+    # Setările specifice pentru fiecare departament (inclusiv cele noi)
     if departament == "Financiar":
-        context += "\nAnalizezi totul din perspectivă financiară. Pune accent pe cash-flow, profitabilitate, reducere de costuri (cost-cutting) și marginile de profit."
+        context += "\nAnalizezi totul din perspectivă financiară (cash-flow, profitabilitate, costuri, ROI)."
     elif departament == "Juridic":
-        context += "\nAnalizezi totul din perspectivă legală. Evaluează clauzele contractuale, liability-ul (răspunderea), conformitatea (compliance) și riscurile de litigiu."
+        context += "\nAnalizezi totul din perspectivă legală (clauze, riscuri de litigiu, liability, compliance)."
     elif departament == "Marketing":
-        context += "\nAnalizezi din perspectiva brandului și a cotei de piață. Pune accent pe target audience, CAC (Cost of Customer Acquisition) și ratele de conversie."
+        context += "\nAnalizezi din perspectiva brandului și a cotei de piață (conversii, audiență, CAC, campanii)."
     elif departament == "Resurse Umane":
-        context += "\nAnalizezi din perspectiva capitalului uman. Pune accent pe retenție, recrutare, evaluarea performanței și cultura organizațională."
+        context += "\nAnalizezi din perspectiva capitalului uman (retenție, recrutare, cultură organizațională, performanță)."
     elif departament == "Management & Strategie":
-        context += "\nAnalizezi din perspectiva conducerii (C-level). Pune accent pe scalabilitate, OKRs, direcția generală a companiei și sinergii între departamente."
+        context += "\nAnalizezi din perspectiva conducerii (scalabilitate, OKRs, direcție generală, achiziții, viziune pe termen lung)."
+    elif departament == "Vânzări":
+        context += "\nAnalizezi din perspectiva generării de venituri (pipeline, strategii de negociere, conversia lead-urilor, retenția clienților B2B/B2C)."
+    elif departament == "Operațiuni & Logistică":
+        context += "\nAnalizezi din perspectiva eficienței (supply chain, fluxuri de procese, managementul stocurilor, optimizarea timpilor de livrare)."
+    elif departament == "IT & Securitate":
+        context += "\nAnalizezi din perspectiva tehnologică (arhitectură de sistem, audituri de securitate cibernetică, protecția datelor/GDPR, infrastructură cloud)."
 
     if text_curs != "":
-        context += f"\n\nTe rog să răspunzi la solicitările utilizatorului bazându-te STRICT pe următoarele documente (Data Room). Dacă o informație nu se regăsește în documente, specifică clar.\n\nDATE/DOCUMENTE DISPONIBILE:\n{text_curs}" 
-
+        context += f"\n\nTe rog să răspunzi la solicitările utilizatorului bazându-te STRICT pe următoarele documente. Dacă informația lipsește, spune clar asta.\n\nDATE DISPONIBILE:\n{text_curs}"
     if "mesaje" not in st.session_state:
         st.session_state.mesaje = []
 
