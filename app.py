@@ -79,7 +79,53 @@ else:
             "IT & Securitate"
         )
     )
+
+    # ==========================================
+    # ZONA REPARATĂ: ÎNCĂRCAREA FIȘIERELOR
+    # ==========================================
+    st.sidebar.markdown("---")
+    st.sidebar.subheader("📂 Documente Sursă (Data Room)")
     
+    fisiere_incarcate = st.sidebar.file_uploader(
+        "Încărcați contracte, bugete, prezentări (PDF, Word, etc.)", 
+        type=["pdf", "docx", "xlsx", "pptx", "txt"], 
+        accept_multiple_files=True
+    )
+    
+    text_curs = ""
+    if fisiere_incarcate:
+        with st.spinner('Procesez documentele...'):
+            for fisier in fisiere_incarcate:
+                nume_fisier = fisier.name
+                extensie = nume_fisier.split('.')[-1].lower()
+                
+                text_curs += f"\n\n--- DOCUMENT: {nume_fisier} ---\n"
+                
+                try:
+                    if extensie == "pdf":
+                        pdf_reader = PyPDF2.PdfReader(fisier)
+                        for pagina in pdf_reader.pages:
+                            text_curs += pagina.extract_text() + "\n"
+                    elif extensie == "docx":
+                        doc = docx.Document(fisier)
+                        for paragraf in doc.paragraphs:
+                            text_curs += paragraf.text + "\n"
+                    elif extensie == "xlsx":
+                        df = pd.read_excel(fisier)
+                        text_curs += df.to_string() + "\n"
+                    elif extensie == "pptx":
+                        prezentare = Presentation(fisier)
+                        for slide in prezentare.slides:
+                            for forma in slide.shapes:
+                                if hasattr(forma, "text"):
+                                    text_curs += forma.text + "\n"
+                    elif extensie == "txt":
+                        text_curs += fisier.getvalue().decode("utf-8") + "\n"
+                except Exception as e:
+                    st.sidebar.error(f"Eroare la citirea {nume_fisier}: {e}")
+                    
+        st.sidebar.success(f"{len(fisiere_incarcate)} document(e) procesate. Pregătit pentru analiză.")
+    # ==========================================
 
     # ==========================================
     # 4. NOUL CREIER CORPORATE (Prompt-ul de sistem)
@@ -113,6 +159,7 @@ Rolul tău este să analizezi documentele primite și să oferi recomandări de 
 
     if text_curs != "":
         context += f"\n\nTe rog să răspunzi la solicitările utilizatorului bazându-te STRICT pe următoarele documente. Dacă informația lipsește, spune clar asta.\n\nDATE DISPONIBILE:\n{text_curs}"
+    
     if "mesaje" not in st.session_state:
         st.session_state.mesaje = []
 
@@ -143,4 +190,3 @@ Rolul tău este să analizezi documentele primite și să oferi recomandări de 
         
         st.session_state.mesaje.append({"rol": "assistant", "continut": raspuns_ai})
         salveaza_istoric(st.session_state.utilizator_curent, st.session_state.mesaje)
-
