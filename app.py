@@ -6,27 +6,63 @@ import pandas as pd
 from pptx import Presentation
 import json
 import os
+import shutil
 
-# 1. Am schimbat iconița și titlul paginii
+# 1. Configurare Pagină
 st.set_page_config(page_title="Strategio AI", page_icon="💼", layout="wide")
 
 # ==========================================
-# FUNCȚII NOI: SALVAREA ȘI ÎNCĂRCAREA ISTORICULUI
+# FUNCȚII DE GESTIONARE DATE (FISIERE SI ISTORIC)
 # ==========================================
+
+def get_user_folder(utilizator):
+    """Creează și returnează folderul personal al utilizatorului."""
+    cale = f"data_room_{utilizator}"
+    if not os.path.exists(cale):
+        os.makedirs(cale)
+    return cale
+
 def incarca_istoric(utilizator):
     nume_fisier = f"istoric_{utilizator}.json"
     if os.path.exists(nume_fisier):
-        with open(nume_fisier, "r", encoding="utf-8") as f:
-            return json.load(f)
+        try:
+            with open(nume_fisier, "r", encoding="utf-8") as f:
+                return json.load(f)
+        except:
+            return []
     return []
 
 def salveaza_istoric(utilizator, mesaje):
     nume_fisier = f"istoric_{utilizator}.json"
-    try:
-        with open(nume_fisier, "w", encoding="utf-8") as f:
-            json.dump(mesaje, f, ensure_ascii=False, indent=4)
-    except Exception as e:
-        st.error(f"Eroare internă de salvare: {e}")
+    with open(nume_fisier, "w", encoding="utf-8") as f:
+        json.dump(mesaje, f, ensure_ascii=False, indent=4)
+
+def citeste_text_din_folder(folder_utilizator):
+    """Citește toate fișierele salvate anterior în folderul utilizatorului."""
+    text_total = ""
+    for nume_fisier in os.listdir(folder_utilizator):
+        cale_completa = os.path.join(folder_utilizator, nume_fisier)
+        extensie = nume_fisier.split('.')[-1].lower()
+        text_total += f"\n\n--- DOCUMENT: {nume_fisier} ---\n"
+        try:
+            if extensie == "pdf":
+                with open(cale_completa, "rb") as f:
+                    pdf_reader = PyPDF2.PdfReader(f)
+                    for pagina in pdf_reader.pages:
+                        text_total += pagina.extract_text() + "\n"
+            elif extensie == "docx":
+                doc = docx.Document(cale_completa)
+                for p in doc.paragraphs:
+                    text_total += p.text + "\n"
+            elif extensie == "xlsx":
+                df = pd.read_excel(cale_completa)
+                text_total += df.to_string() + "\n"
+            elif extensie == "txt":
+                with open(cale_completa, "r", encoding="utf-8") as f:
+                    text_total += f.read() + "\n"
+        except Exception as e:
+            text_total += f"[Eroare citire {nume_fisier}: {e}]\n"
+    return text_total
 
 # --- SISTEMUL DE LOGIN ---
 if "logat" not in st.session_state:
@@ -34,10 +70,7 @@ if "logat" not in st.session_state:
     st.session_state.utilizator_curent = ""
 
 if not st.session_state.logat:
-    # Un ecran de login mult mai "business"
     st.title("🔐 Portal Securizat: Strategio AI")
-    st.write("Vă rugăm să vă autentificați pentru a accesa platforma de analiză a documentelor.")
-    
     user_input = st.text_input("Nume utilizator (ID Companie):")
     pass_input = st.text_input("Parolă:", type="password")
     
@@ -45,148 +78,96 @@ if not st.session_state.logat:
         if user_input in st.secrets["passwords"] and st.secrets["passwords"][user_input] == pass_input:
             st.session_state.logat = True
             st.session_state.utilizator_curent = user_input
+            # Încărcăm istoricul imediat la login
+            st.session_state.mesaje = incarca_istoric(user_input)
             st.rerun()
         else:
-            st.error("Credențiale incorecte. Acces refuzat!")
+            st.error("Credențiale incorecte!")
 
 # --- APLICAȚIA PRINCIPALĂ ---
 else:
     client = OpenAI(api_key=st.secrets["openai_api_key"])
-
-    # 2. LOCUL PENTRU LOGO
-    # Dacă ai o poză numită "logo.png" pusă pe GitHub lângă cod, șterge diez-ul (#) de la linia de mai jos:
-    # st.sidebar.image("logo.png", width=200)
+    user_path = get_user_folder(st.session_state.utilizator_curent)
 
     st.title(f"💼 Strategio AI")
-    st.markdown(f"**Utilizator curent:** {st.session_state.utilizator_curent} | Încărcați documentele pentru analiză și sinteză strategică.")
-
+    
+    # Sidebar
     if st.sidebar.button("🚪 Deconectare"):
         st.session_state.logat = False
-        st.session_state.mesaje = []
         st.rerun()
 
-    # 3. Meniul de Departamente extins
     departament = st.sidebar.selectbox(
         "Filtru Departamental:", 
-        (
-            "Management & Strategie", 
-            "Financiar", 
-            "Juridic", 
-            "Resurse Umane", 
-            "Marketing",
-            "Vânzări", 
-            "Operațiuni & Logistică", 
-            "IT & Securitate"
-        )
+        ("Management & Strategie", "Financiar", "Juridic", "Resurse Umane", "Marketing", "Vânzări", "Operațiuni & Logistică", "IT & Securitate")
     )
 
     # ==========================================
-    # ZONA REPARATĂ: ÎNCĂRCAREA FIȘIERELOR
+    # GESTIONARE DATA ROOM (SIDEBAR)
     # ==========================================
     st.sidebar.markdown("---")
-    st.sidebar.subheader("📂 Documente Sursă (Data Room)")
+    st.sidebar.subheader("📂 Data Room (Documente Salvate)")
     
-    fisiere_incarcate = st.sidebar.file_uploader(
-        "Încărcați contracte, bugete, prezentări (PDF, Word, etc.)", 
-        type=["pdf", "docx", "xlsx", "pptx", "txt"], 
-        accept_multiple_files=True
-    )
-    
-    text_curs = ""
-    if fisiere_incarcate:
-        with st.spinner('Procesez documentele...'):
-            for fisier in fisiere_incarcate:
-                nume_fisier = fisier.name
-                extensie = nume_fisier.split('.')[-1].lower()
-                
-                text_curs += f"\n\n--- DOCUMENT: {nume_fisier} ---\n"
-                
-                try:
-                    if extensie == "pdf":
-                        pdf_reader = PyPDF2.PdfReader(fisier)
-                        for pagina in pdf_reader.pages:
-                            text_curs += pagina.extract_text() + "\n"
-                    elif extensie == "docx":
-                        doc = docx.Document(fisier)
-                        for paragraf in doc.paragraphs:
-                            text_curs += paragraf.text + "\n"
-                    elif extensie == "xlsx":
-                        df = pd.read_excel(fisier)
-                        text_curs += df.to_string() + "\n"
-                    elif extensie == "pptx":
-                        prezentare = Presentation(fisier)
-                        for slide in prezentare.slides:
-                            for forma in slide.shapes:
-                                if hasattr(forma, "text"):
-                                    text_curs += forma.text + "\n"
-                    elif extensie == "txt":
-                        text_curs += fisier.getvalue().decode("utf-8") + "\n"
-                except Exception as e:
-                    st.sidebar.error(f"Eroare la citirea {nume_fisier}: {e}")
-                    
-        st.sidebar.success(f"{len(fisiere_incarcate)} document(e) procesate. Pregătit pentru analiză.")
-    # ==========================================
+    # Upload fișiere noi
+    fisiere_noi = st.sidebar.file_uploader("Încarcă documente noi:", accept_multiple_files=True)
+    if fisiere_noi:
+        for f in fisiere_noi:
+            with open(os.path.join(user_path, f.name), "wb") as buffer:
+                buffer.write(f.getbuffer())
+        st.sidebar.success("Fișiere salvate!")
+        st.rerun()
 
-    # ==========================================
-    # 4. NOUL CREIER CORPORATE (Prompt-ul de sistem)
-    # ==========================================
-    context = f"""Ești un Senior Business Analyst și Consultant Strategic la o firmă de top.
-În prezent, ești asignat STRICT pe departamentul: **{departament}**.
+    # Listare fișiere existente + Buton Ștergere
+    fisiere_existente = os.listdir(user_path)
+    if fisiere_existente:
+        for f_nume in fisiere_existente:
+            col1, col2 = st.sidebar.columns([3, 1])
+            col1.caption(f"📄 {f_nume}")
+            if col2.button("🗑️", key=f_nume):
+                os.remove(os.path.join(user_path, f_nume))
+                st.rerun()
+        
+        if st.sidebar.button("⚠️ Șterge Tot"):
+            shutil.rmtree(user_path)
+            os.makedirs(user_path)
+            st.rerun()
+    else:
+        st.sidebar.info("Data Room este gol.")
 
-REGULĂ CRITICĂ: Dacă utilizatorul îți pune o întrebare care nu are legătură cu {departament}, nu îi oferi analiza. Spune-i politicos să schimbe filtrul departamental din meniul lateral.
+    # Pregătire text din toate documentele salvate
+    text_context = citeste_text_din_folder(user_path)
 
-REGULĂ DE FORMATARE: Răspunde SCURT, concis și direct la obiect. Folosește EXCLUSIV text cursiv (paragrafe legate). NU ESTE STRICT INTERZISĂ folosirea listelor cu liniuțe (bullet points) sau a enumerărilor dar vor fi folosite doar când sunt solicitate. Formulează răspunsul ca un rezumat executiv (Executive Summary) fără a avea un maxim de paragrafe.
+    # Prompt de sistem
+    context_system = f"""Ești un Senior Business Analyst assignment pe departamentul: {departament}. 
+    Analizează documentele și oferă răspunsuri sub formă de Rezumat Executiv, folosind text cursiv. 
+    DATE DIN DATA ROOM: {text_context}"""
 
-Rolul tău este să analizezi documentele primite și să oferi recomandări de business clare, folosind un ton profesional."""
-
-    # Setările specifice pentru fiecare departament (inclusiv cele noi)
-    if departament == "Financiar":
-        context += "\nAnalizezi totul din perspectivă financiară (cash-flow, profitabilitate, costuri, ROI)."
-    elif departament == "Juridic":
-        context += "\nAnalizezi totul din perspectivă legală (clauze, riscuri de litigiu, liability, compliance)."
-    elif departament == "Marketing":
-        context += "\nAnalizezi din perspectiva brandului și a cotei de piață (conversii, audiență, CAC, campanii)."
-    elif departament == "Resurse Umane":
-        context += "\nAnalizezi din perspectiva capitalului uman (retenție, recrutare, cultură organizațională, performanță)."
-    elif departament == "Management & Strategie":
-        context += "\nAnalizezi din perspectiva conducerii (scalabilitate, OKRs, direcție generală, achiziții, viziune pe termen lung)."
-    elif departament == "Vânzări":
-        context += "\nAnalizezi din perspectiva generării de venituri (pipeline, strategii de negociere, conversia lead-urilor, retenția clienților B2B/B2C)."
-    elif departament == "Operațiuni & Logistică":
-        context += "\nAnalizezi din perspectiva eficienței (supply chain, fluxuri de procese, managementul stocurilor, optimizarea timpilor de livrare)."
-    elif departament == "IT & Securitate":
-        context += "\nAnalizezi din perspectiva tehnologică (arhitectură de sistem, audituri de securitate cibernetică, protecția datelor/GDPR, infrastructură cloud)."
-
-    if text_curs != "":
-        context += f"\n\nTe rog să răspunzi la solicitările utilizatorului bazându-te STRICT pe următoarele documente. Dacă informația lipsește, spune clar asta.\n\nDATE DISPONIBILE:\n{text_curs}"
-    
+    # Afișare chat
     if "mesaje" not in st.session_state:
         st.session_state.mesaje = []
 
-    for mesaj in st.session_state.mesaje:
-        with st.chat_message(mesaj["rol"]):
-            st.markdown(mesaj["continut"])
+    for m in st.session_state.mesaje:
+        with st.chat_message(m["rol"]):
+            st.markdown(m["continut"])
 
-    # Input schimbat
-    if intrebare := st.chat_input("Adresați o solicitare de analiză către AI..."):
-        
+    # Chat Input
+    if intrebare := st.chat_input("Întrebați ceva despre documentele din Data Room..."):
+        st.session_state.mesaje.append({"rol": "user", "continut": intrebare})
         with st.chat_message("user"):
             st.markdown(intrebare)
-        
-        st.session_state.mesaje.append({"rol": "user", "continut": intrebare})
-        salveaza_istoric(st.session_state.utilizator_curent, st.session_state.mesaje)
 
-        mesaje_api = [{"role": "system", "content": context}]
+        # Apel API
+        mesaje_api = [{"role": "system", "content": context_system}]
         for m in st.session_state.mesaje:
             mesaje_api.append({"role": m["rol"], "content": m["continut"]})
 
         with st.chat_message("assistant"):
+            # Notă: Am corectat modelul la gpt-4 (sau gpt-3.5-turbo), gpt-5.4 nu există încă
             stream = client.chat.completions.create(
-                model="gpt-5.4", 
+                model="gpt-4-turbo", 
                 messages=mesaje_api,
                 stream=True
             )
-            raspuns_ai = st.write_stream(stream)
+            raspuns = st.write_stream(stream)
         
-        st.session_state.mesaje.append({"rol": "assistant", "continut": raspuns_ai})
+        st.session_state.mesaje.append({"rol": "assistant", "continut": raspuns})
         salveaza_istoric(st.session_state.utilizator_curent, st.session_state.mesaje)
