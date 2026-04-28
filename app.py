@@ -8,7 +8,7 @@ import json
 import os
 
 # 1. Am schimbat iconița și titlul paginii
-st.set_page_config(page_title="CorporateAdvisor AI", page_icon="💼", layout="wide")
+st.set_page_config(page_title="Strategio AI", page_icon="💼", layout="wide")
 
 # ==========================================
 # FUNCȚII NOI: SALVAREA ȘI ÎNCĂRCAREA ISTORICULUI
@@ -35,10 +35,10 @@ if "logat" not in st.session_state:
 
 if not st.session_state.logat:
     # Un ecran de login mult mai "business"
-    st.title("🔐 Portal Securizat: CorporateAdvisor AI")
+    st.title("🔐 Portal Securizat: Strategio AI")
     st.write("Vă rugăm să vă autentificați pentru a accesa platforma de analiză a documentelor.")
     
-    user_input = st.text_input("Nume utilizator (ID angajat):")
+    user_input = st.text_input("Nume utilizator (ID Companie):")
     pass_input = st.text_input("Parolă:", type="password")
     
     if st.button("Autentificare"):
@@ -57,7 +57,7 @@ else:
     # Dacă ai o poză numită "logo.png" pusă pe GitHub lângă cod, șterge diez-ul (#) de la linia de mai jos:
     # st.sidebar.image("logo.png", width=200)
 
-    st.title(f"💼 CorporateAdvisor AI")
+    st.title(f"💼 Strategio AI")
     st.markdown(f"**Utilizator curent:** {st.session_state.utilizator_curent} | Încărcați documentele pentru analiză și sinteză strategică.")
 
     if st.sidebar.button("🚪 Deconectare"):
