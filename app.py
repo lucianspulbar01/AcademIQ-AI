@@ -16,8 +16,8 @@ st.set_page_config(page_title="Strategio AI", page_icon="💼", layout="wide")
 # BAZA DE DATE UTILIZATORI (Fără st.secrets)
 # ==========================================
 UTILIZATORI_PERMISI = {
-    "luca": "parola_luca_123",
-    "director": "parola_director_123"
+    "luca": "parola123",
+    "director": "parola123"
 }
 
 # ==========================================
