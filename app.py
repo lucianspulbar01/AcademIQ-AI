@@ -187,31 +187,51 @@ else:
     {context_profil}
     DATE DIN DATA ROOM: {text_context}"""
 
-    # Afișare chat
+    # ==========================================
+    # AFIȘARE CHAT (STÂNGA) ȘI ISTORIC (DREAPTA)
+    # ==========================================
     if "mesaje" not in st.session_state:
         st.session_state.mesaje = []
 
-    for m in st.session_state.mesaje:
-        with st.chat_message(m["rol"]):
-            st.markdown(m["continut"])
+    # Împărțim ecranul: 3 părți pentru chat, 1 parte pentru istoricul din dreapta
+    col_chat, col_istoric = st.columns([3, 1])
 
-    # Chat Input
-    if intrebare := st.chat_input("Întrebați ceva despre documentele din Data Room..."):
-        st.session_state.mesaje.append({"rol": "user", "continut": intrebare})
-        with st.chat_message("user"):
-            st.markdown(intrebare)
-
-        mesaje_api = [{"role": "system", "content": context_system}]
-        for m in st.session_state.mesaje:
-            mesaje_api.append({"role": m["rol"], "content": m["continut"]})
-
-        with st.chat_message("assistant"):
-            stream = client.chat.completions.create(
-                model="gpt-4-turbo", 
-                messages=mesaje_api,
-                stream=True
-            )
-            raspuns = st.write_stream(stream)
+    # --- ZONA DIN DREAPTA (Istoricul) ---
+    with col_istoric:
+        st.subheader("🕒 Memorie Chat")
+        st.info(f"Mesaje în memorie: {len(st.session_state.mesaje)}")
         
-        st.session_state.mesaje.append({"rol": "assistant", "continut": raspuns})
-        salveaza_istoric(st.session_state.utilizator_curent, st.session_state.mesaje)
+        st.caption("AI-ul citește aceste mesaje pentru a înțelege contextul discuției curente.")
+        
+        # Buton pentru a șterge memoria AI-ului dacă vrem să începem o analiză complet nouă
+        if st.button("🗑️ Șterge conversația", use_container_width=True):
+            st.session_state.mesaje = []
+            salveaza_istoric(st.session_state.utilizator_curent, [])
+            st.rerun()
+
+    # --- ZONA DIN STÂNGA (Chat-ul Principal) ---
+    with col_chat:
+        for m in st.session_state.mesaje:
+            with st.chat_message(m["rol"]):
+                st.markdown(m["continut"])
+
+        # Chat Input
+        if intrebare := st.chat_input("Întrebați ceva despre documentele din Data Room..."):
+            st.session_state.mesaje.append({"rol": "user", "continut": intrebare})
+            with st.chat_message("user"):
+                st.markdown(intrebare)
+
+            mesaje_api = [{"role": "system", "content": context_system}]
+            for m in st.session_state.mesaje:
+                mesaje_api.append({"role": m["rol"], "content": m["continut"]})
+
+            with st.chat_message("assistant"):
+                stream = client.chat.completions.create(
+                    model="gpt-4-turbo", 
+                    messages=mesaje_api,
+                    stream=True
+                )
+                raspuns = st.write_stream(stream)
+            
+            st.session_state.mesaje.append({"rol": "assistant", "continut": raspuns})
+            salveaza_istoric(st.session_state.utilizator_curent, st.session_state.mesaje)
