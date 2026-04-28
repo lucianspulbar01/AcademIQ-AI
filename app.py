@@ -143,4 +143,75 @@ else:
     st.sidebar.subheader("📂 Data Room (Documente Salvate)")
     
     fisiere_noi = st.sidebar.file_uploader("Încarcă documente noi:", accept_multiple_files=True)
-    if fisiere_noi
+    if fisiere_noi:
+        for f in fisiere_noi:
+            with open(os.path.join(user_path, f.name), "wb") as buffer:
+                buffer.write(f.getbuffer())
+        st.sidebar.success("Fișiere salvate!")
+        st.rerun()
+
+    fisiere_existente = os.listdir(user_path)
+    if fisiere_existente:
+        for f_nume in fisiere_existente:
+            col1, col2 = st.sidebar.columns([3, 1])
+            col1.caption(f"📄 {f_nume}")
+            if col2.button("🗑️", key=f_nume):
+                os.remove(os.path.join(user_path, f_nume))
+                st.rerun()
+        
+        if st.sidebar.button("⚠️ Șterge Tot"):
+            shutil.rmtree(user_path)
+            os.makedirs(user_path)
+            st.rerun()
+    else:
+        st.sidebar.info("Data Room este gol.")
+
+    text_context = citeste_text_din_folder(user_path)
+
+    # ==========================================
+    # INJECTAREA PROFILULUI ÎN CREIERUL AI-ULUI
+    # ==========================================
+    context_profil = ""
+    if profil_curent.get("nume") or profil_curent.get("caen") or profil_curent.get("localitate") or profil_curent.get("obiective"):
+        context_profil = f"""
+        DATE DESPRE COMPANIA CLIENTULUI (pentru contextualizarea răspunsurilor):
+        - Nume: {profil_curent.get("nume", "Nespecificat")}
+        - Domeniu/CAEN: {profil_curent.get("caen", "Nespecificat")}
+        - Localitate/Piață target: {profil_curent.get("localitate", "Nespecificată")}
+        - Obiective principale: {profil_curent.get("obiective", "Nespecificate")}
+        Te rog să ții cont obligatoriu de aceste date, de piața locală aferentă și de domeniu atunci când formulezi analizele și soluțiile.
+        """
+
+    context_system = f"""Ești un Senior Business Analyst assignment pe departamentul: {departament}. 
+    Analizează documentele și oferă răspunsuri sub formă de Rezumat Executiv, folosind text cursiv. 
+    {context_profil}
+    DATE DIN DATA ROOM: {text_context}"""
+
+    # Afișare chat
+    if "mesaje" not in st.session_state:
+        st.session_state.mesaje = []
+
+    for m in st.session_state.mesaje:
+        with st.chat_message(m["rol"]):
+            st.markdown(m["continut"])
+
+    # Chat Input
+    if intrebare := st.chat_input("Întrebați ceva despre documentele din Data Room..."):
+        st.session_state.mesaje.append({"rol": "user", "continut": intrebare})
+        with st.chat_message("user"):
+            st.markdown(intrebare)
+
+        mesaje_api = [{"role": "system", "content": context_system}]
+        for m in st.session_state.mesaje:
+            mesaje_api.append({"role": m["rol"], "content": m["continut"]})
+
+        with st.chat_message("assistant"):
+            stream = client.chat.completions.create(
+                model="gpt-4-turbo", 
+                messages=mesaje_api,
+                stream=True
+            )
+            raspuns = st.write_stream(stream)
+        
+        st.session_state.mesaje.append({"rol": "assistant", "continut": raspuns})
+        salveaza_istoric(st.session_state.utilizator_curent, st.session_state.mesaje)
